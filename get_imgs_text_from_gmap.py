@@ -28,8 +28,12 @@ class Chrome:
             return None
 
     def get_image_urls(self): # 这块有点问题
-        # 爬取'Photos & videos'栏中的第一个'All'中的所有图片url
+        # 爬取'Photos & videos' or 'Photos'栏中的第一个'All'中的所有图片url
         images = self.driver.find_elements(By.CSS_SELECTOR, ".cRLbXd .ofKBgf img")
+        # 没爬到可能是只有'Photos'栏
+        if images is None or len(images) == 0:
+            images = self.driver.find_elements(By.CSS_SELECTOR, ".h2Jmld .jtJMuf img")
+        # 取出url
         image_urls = [image.get_attribute('src') for image in images]
         # 返回
         return image_urls
@@ -130,6 +134,10 @@ if __name__ == '__main__':
         gmap_id = obj['gmap_id'].replace(":", "-")
         url = obj['url']
 
+        # 跳过已下载，若有一个POI下载了部分图片也跳过把，要不中断后再下载就太慢了，每次都要请求，用正则也慢
+        if str(row_i + 1) + '_' + gmap_id + '_' + str(1) in skip_img_set: 
+            continue
+
         # 打开网页
         chrome.get(url)
 
@@ -139,10 +147,7 @@ if __name__ == '__main__':
         for i, url in enumerate(image_urls):
             # 每张图片的唯一标识
             img_id = str(row_i + 1) + '_' + gmap_id + '_' + str(i + 1)
-            # 跳过已下载
-            if img_id in skip_img_set: 
-                continue
-
+            
             try:
                 # 下载单张
                 image = http_get(url)
