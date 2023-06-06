@@ -1,4 +1,4 @@
-# Author: T_Xu(create)
+# Author: T_Xu(create), S_Sun(modify)
 
 import os
 import urllib
@@ -8,8 +8,8 @@ import json
 import time
 
 # filter
-meta_filename = r'E:\论文整理\POI Recommendation\dataSet\Alaska\meta-Alaska.json'
-filename = r'E:\论文整理\POI Recommendation\dataSet\Alaska\review-Alaska_10.json'
+meta_filename = 'amazon/meta_Video_Games.json'
+filename = 'amazon/Video_Games_5.json'
 write_filtered_filename = 'amazon/Video_Games_5core_filtered.json'
 
 
@@ -26,7 +26,6 @@ def filter():
                 data.append(json.loads(line))
             except:
                 continue
-
     df = pd.json_normalize(data)
 
     # 取出df_meta中的asin
