@@ -2,7 +2,9 @@
 __pycache__/
 
 # dataset
-dataset/
+dataset/*
+# exclude README.md
+!dataset/README.md
 
 # imgs
 imgs/
