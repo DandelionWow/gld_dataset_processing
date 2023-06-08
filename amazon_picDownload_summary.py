@@ -1,13 +1,11 @@
 # Author: T_Xu(create), S_Sun(modify)
 
 import os
-import urllib
-import tqdm
-import pandas as pd
+import argparse
 import json
 import time
 
-def image_to_text(skip_img_file, photo_dir_, write_filename_, cuda_no='cuda:0', skip_num=0):
+def image_to_text(skip_img_file, photo_dir_, write_filename_, cuda_no='cuda:0'):
     from PIL import Image
     from transformers import AutoProcessor, Blip2ForConditionalGeneration
     import torch
@@ -57,10 +55,9 @@ def image_to_text(skip_img_file, photo_dir_, write_filename_, cuda_no='cuda:0', 
             images_dict[key] = [filename_]
         else:
             images_dict[key].append(filename_)
-        
-        # 自增
-        total_num += 1
-        
+    # 更新总数
+    total_num = len(images_dict)
+
     # 遍历图片字典，将每个key对应的图片集转为文字集
     for key in images_dict:
         # 文字集
@@ -85,7 +82,7 @@ def image_to_text(skip_img_file, photo_dir_, write_filename_, cuda_no='cuda:0', 
         
         # 计算完成循环的剩余时间
         time_end = time.time()
-        time_left = (time_end - time_start) / (count - skip_num + 1) * (total_num - count)
+        time_left = (time_end - time_start) / (count + 1) * (total_num - count)
         # 转换为时分秒
         time_left = time.strftime("%H:%M:%S", time.gmtime(time_left))
 
@@ -94,8 +91,13 @@ def image_to_text(skip_img_file, photo_dir_, write_filename_, cuda_no='cuda:0', 
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--region', type=str, default='Hawaii', help='the region name of datasets(e.g. California)')
+    parser.add_argument('--cuda', type=str, default='0', help='the index of the cuda')
+    args, _ = parser.parse_known_args()
 
-    image_to_text('./dataset/Hawaii/skip_img_file',
-     './dataset/Hawaii/meta_imgs/',
-     './dataset/Hawaii/image_description.json',
-     'cuda:2', skip_num=0)
+    # 图片转文字表述
+    image_to_text('./dataset/'+args.region+'/skip_img_file', # 用于断点续传的跳过文件，每个地区一个
+     './dataset/'+args.region+'/meta_imgs/', # 已下载的meta-xxx.json的（每个POI的）图片集
+     './dataset/'+args.region+'/image_description.json', # 输出文件
+     'cuda:' + args.cuda) # 使用的GPU
