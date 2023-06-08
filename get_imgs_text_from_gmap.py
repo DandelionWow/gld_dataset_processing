@@ -1,4 +1,12 @@
 # Author: T_Xu(create), S_Sun(modify)
+'''
+获取每个POI对应的图片集和review summary
+
+POI信息来自meta-xxx.json(from Google Local Data), 根据POI的url获取信息.
+下载的数据保存在'./dataset/xxx(region name)/downloaded_multimodal_data/'中
+其中, 'download.log'为下载日志, 'xxx.png'为下载图片, 'skip_img_file'为已下载的POI的图片(用于下次跳过不再下载), 
+'review_summary.json'为下载的review summary, 'skip_review_summary_file'为已下载的POI的review summary(用于跳过). 
+'''
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -10,14 +18,15 @@ from fake_useragent import UserAgent
 import random
 import time
 import logging
+import argparse
 
 class Chrome:
-    def __init__(self):
+    def __init__(self, proxy, path):
         options = webdriver.ChromeOptions()
         options.add_argument('--headless')  # 无头模式，不需要打开浏览器窗口
-        options.add_argument('--proxy-server=http://127.0.0.1:7890')  # 设置代理
+        options.add_argument('--proxy-server=' + proxy)  # 设置代理
         options.add_argument('--log-level=3')  # 禁用日志输出
-        self.driver = webdriver.Chrome('D:\Development-Files\ChromeDriver\chromedriver.exe', options=options) # Replace with the path to your ChromeDriver executable
+        self.driver = webdriver.Chrome(path, options=options) # Replace with the path to your ChromeDriver executable
 
     def get(self, url):
         try:
@@ -90,18 +99,25 @@ def init_logger(log_file_path, log_file_name):
     return logging.getLogger()
 
 if __name__ == '__main__':
+    # paremeters
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--region', type=str, default='Alabama', help='the region name of datasets(e.g. California)')
+    parser.add_argument('--proxy', type=str, default='http://127.0.0.1:7890', help='proxy server(http://ip+port)')
+    parser.add_argument('--chromedriver_path', type=str, default='D:\Development-Files\ChromeDriver\chromedriver.exe', help='chrome driver local path')
+    args, _ = parser.parse_known_args()
+
     # 配置代理服务器
-    os.environ['http_proxy'] = 'http://127.0.0.1:7890'
-    os.environ['https_proxy'] = 'http://127.0.0.1:7890' # 这个也要配置成http://xxx
+    os.environ['http_proxy'] = args.proxy
+    os.environ['https_proxy'] = args.proxy # 这个也要配置成http://xxx
 
     # path设置
-    parent_path = './dataset/Hawaii/'
+    parent_path = './dataset/' + args.region + '/'
     if not os.path.exists(parent_path):
         os.mkdir(parent_path)
     downloaded_data_path = parent_path + 'downloaded_multimodal_data/'
     if not os.path.exists(downloaded_data_path):
         os.mkdir(downloaded_data_path)
-    dataset_path = parent_path + 'meta-Hawaii.json'
+    dataset_path = parent_path + 'meta-' + args.region + '.json'
     review_summary_file_path = downloaded_data_path + 'review_summary.json'
     skip_img_file_path = downloaded_data_path + 'skip_img_file'
     skip_review_summary_file_path = downloaded_data_path + 'skip_review_summary_file'
@@ -111,7 +127,7 @@ if __name__ == '__main__':
     logger = init_logger(log_file_path=downloaded_data_path, log_file_name=log_file_name)
     
     # 初始化浏览器
-    chrome = Chrome()
+    chrome = Chrome(args.proxy, args.chromedriver_path)
 
     # 打开跳过文件
     skip_img_file = open(skip_img_file_path, 'a+')
@@ -122,9 +138,8 @@ if __name__ == '__main__':
     skip_img_set = set(skip_img_file.read().splitlines()) # 记录：row_gid_index
     skip_review_summary_set = set(skip_review_summary_file.read().splitlines()) # 记录：row_gid
     
-    # 打开json文件
+    # 打开meta-xxx.json文件
     json_file = open(dataset_path, 'r')
-
     # 遍历json，row_i为行号，line为一行数据
     for row_i, line in enumerate(json_file):
         # 解析json对象，得到字典

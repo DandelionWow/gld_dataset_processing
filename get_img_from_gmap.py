@@ -1,4 +1,5 @@
 # Author: T_Xu(create), S_Sun(modify)
+# 获取每个POI的图片
 
 import requests
 from bs4 import BeautifulSoup
