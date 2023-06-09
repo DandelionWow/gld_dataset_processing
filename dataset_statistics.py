@@ -13,6 +13,7 @@ def handle_dataset_review(file_path, review_file_name):
         user_dict = dict()
         time_list = list()
         time_set = set()
+        misc_info_category_set = set()
 
         for index, line in enumerate(review_file):
             json_obj = json.loads(line)
@@ -26,6 +27,9 @@ def handle_dataset_review(file_path, review_file_name):
             
             time_list.append(json_obj['time'])
             time_set.add(json_obj['time'])
+
+            misc_info = json_obj['MISC']
+            misc_info_category_set.add(misc_info.keys())
         
         # 保存几个集合
         with open(file_path+'user_id_set.pkl', 'wb') as f:
@@ -36,15 +40,12 @@ def handle_dataset_review(file_path, review_file_name):
             pickle.dump(time_list, f)
         with open(file_path+'time_set.pkl', 'wb') as f:
             pickle.dump(time_set, f)
+        with open(file_path+'misc_info_category_set.pkl', 'wb') as f:
+            pickle.dump(misc_info_category_set, f)
 
         return user_id_set, user_dict, time_list, time_set
 
-
-
-if __name__=='__main__':
-    file_path = './dataset/Hawaii/'
-    review_file_name = 'review-Hawaii_10.json'
-
+def statistics_4_review_10(file_path, file_name):
     if (
         os.path.exists(file_path+'user_id_set.pkl') 
         and os.path.exists(file_path+'user_dict.pkl') 
@@ -62,8 +63,8 @@ if __name__=='__main__':
             time_set = pickle.load(f)
     else:
         # 处理数据集
-        user_id_set, user_dict, time_list, time_set = handle_dataset_review(file_path, review_file_name)
-
+        user_id_set, user_dict, time_list, time_set = handle_dataset_review(file_path, file_name)
+    
     
     # 打印统计信息
     # user_id数量
@@ -85,3 +86,53 @@ if __name__=='__main__':
             else:
                 year_couts[year] += 1
     print(f"每个年份数量统计==={year_couts}")
+
+def handle_dataset_meta(file_path, file_name):
+    with open(file_path+file_name, 'r') as f:
+        misc_info_category_set = set()
+
+        for index, line in enumerate(f):
+            json_obj = json.loads(line)
+
+            misc_info = json_obj['MISC']
+            if misc_info is not None:
+                misc_info_category_set.update(misc_info.keys())
+        
+        # 保存几个集合
+        with open(file_path+'misc_info_category_set.pkl', 'wb') as f:
+            pickle.dump(misc_info_category_set, f)
+
+        return misc_info_category_set
+
+def statistics_4_meta(file_path, file_name):
+    if (
+        os.path.exists(file_path+'misc_info_category_set.pkl') 
+        ):
+        # 加载处理后的数据
+        with open(file_path+'misc_info_category_set.pkl', 'rb') as f:
+            misc_info_category_set = pickle.load(f)
+            # 合并set集，追加更新（先不用）
+            # misc_info_category_set_ = handle_dataset_meta(file_path, file_name)
+            # misc_info_category_set = misc_info_category_set | misc_info_category_set_
+            # pickle.dump(misc_info_category_set, f)
+            
+    else:
+        # 处理数据集
+        misc_info_category_set = handle_dataset_meta(file_path, file_name)
+    
+    # 打印
+    print(len(misc_info_category_set))
+
+if __name__=='__main__':
+    region = 'California'
+    file_path = './dataset/' + region + '/'
+    review_10_file_name = 'review-' + region + '_10.json'
+    meta_file_name = 'meta-' + region + '.json'
+
+    # statistics_4_review_10(file_path, review_10_file_name)
+    statistics_4_meta(file_path, meta_file_name)
+
+    # misc_info_category_set = set()
+    # misc_info_category_set_ = set()
+    # with open(file_path+'misc_info_category_set.pkl', 'rb') as f:
+    #     misc_info_category_set = pickle.load(f)
