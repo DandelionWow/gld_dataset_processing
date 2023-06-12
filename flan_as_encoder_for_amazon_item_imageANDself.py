@@ -1,5 +1,6 @@
 # Author: T_Xu(create), S_Sun(modify)
 
+import argparse
 import json
 from transformers import pipeline
 import torch
@@ -10,8 +11,8 @@ from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 
 class CustomPipeline:
     def __init__(self, model_name):
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name, device_map={"": 'cuda:3'})
-        self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name, device_map={"": 'cuda:3'})
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name, device_map={"": 'cuda:1'})
+        self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name, device_map={"": 'cuda:1'})
 
     def get_embedding(self, input_text):
         input_ids = self.tokenizer.encode(input_text, return_tensors="pt")
@@ -119,18 +120,67 @@ def run(filename, write_filename_image, write_filename_description):
 
             count += 1
 
-# Musical   Video_Games   Cell_Phones_and_Accessories
-filename = 'amazon/meta_Cell_Phones_and_Accessories_5core_with_imageDescription.json'
-write_filename_image = 'amazon/Amazon_Cell_Phones_and_Accessories_image_embedding.json'
-write_filename_description = 'amazon/Amazon_Cell_Phones_and_Accessories_description_embedding.json'
-run(filename, write_filename_image, write_filename_description)
+def embed_4_modal_meta(file_path, target_file_path):
+    count = 1
+    time_start = time.time()
+    # 先读取一遍filename记录总行数
+    total_num = 0
+    with open(file_path, 'r') as f:
+        for line in f:
+            total_num += 1
 
-filename = 'amazon/meta_Musical_5core_with_imageDescription.json'
-write_filename_image = 'amazon/Amazon_Musical_image_embedding.json'
-write_filename_description = 'amazon/Amazon_Musical_description_embedding.json'
-run(filename, write_filename_image, write_filename_description)
+    target_file = open(target_file_path, 'w')
 
-filename = 'amazon/meta_Video_Games_5core_with_imageDescription.json'
-write_filename_image = 'amazon/Amazon_Video_Games_image_embedding.json'
-write_filename_description = 'amazon/Amazon_Video_Games_description_embedding.json'
-run(filename, write_filename_image, write_filename_description)
+    # 逐条读取filename
+    with open(file_path, 'r') as f:
+        for line in f:
+            # 解析json
+            line = json.loads(line)
+            kv = line.popitem()
+            poi_id = kv[0]
+            des = kv[1]
+        
+            # embed
+            cls_embedding = custom_pipeline.get_embedding(des)
+            cls_embedding = cls_embedding.tolist()
+
+            # 写入文件
+            target_file.write(json.dumps({poi_id: cls_embedding}) + '\n')
+        
+            # 计算剩余时间
+            time_end = time.time()
+            time_left = (time_end - time_start) / (count + 1) * (total_num - count)
+            # 将time_left按照时分秒格式输出
+            time_left = time.strftime("%H:%M:%S", time.gmtime(time_left))
+            print('count:', count, 'poi_id:', poi_id, 'time_left:', time_left)
+
+            count += 1
+
+    target_file.flush()
+    target_file.close()
+
+def embed_4_modal_imgdes():
+    return
+
+if __name__ == '__main__':
+    # paremeters
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--region', type=str, default='Hawaii', help='the region name of datasets(e.g. California)')
+    args, _ = parser.parse_known_args()
+
+    parent_path = './dataset/' + args.region + '/'
+    
+    # 处理poi_description，对其做嵌入
+    pois_description_file_path = parent_path + 'pois_description.json'
+    modal_meta_embedding_file_path = parent_path + 'modal_meta_embedding.json'
+    embed_4_modal_meta(pois_description_file_path, modal_meta_embedding_file_path)
+
+    # filename = 'amazon/meta_Musical_5core_with_imageDescription.json'
+    # write_filename_image = 'amazon/Amazon_Musical_image_embedding.json'
+    # write_filename_description = 'amazon/Amazon_Musical_description_embedding.json'
+    # run(filename, write_filename_image, write_filename_description)
+
+    # filename = 'amazon/meta_Video_Games_5core_with_imageDescription.json'
+    # write_filename_image = 'amazon/Amazon_Video_Games_image_embedding.json'
+    # write_filename_description = 'amazon/Amazon_Video_Games_description_embedding.json'
+    # run(filename, write_filename_image, write_filename_description)
