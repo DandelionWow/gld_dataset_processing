@@ -6,11 +6,20 @@ from transformers import pipeline
 import torch
 import torch.nn.functional as F
 import time
+from sentence_transformers import SentenceTransformer
 
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 
-class CustomPipeline:
+class EncoderModel:
+    def __init__(self) -> None:
+        pass
+
+    def get_embedding(self, input_text):
+        return
+
+class CustomPipeline(EncoderModel):
     def __init__(self, model_name, gpu_index):
+        super().__init__()
         self.tokenizer = AutoTokenizer.from_pretrained(model_name, device_map={"": 'cuda:'+gpu_index})
         self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name, device_map={"": 'cuda:'+gpu_index})
 
@@ -22,6 +31,26 @@ class CustomPipeline:
             hidden_states = outputs.encoder_last_hidden_state
         cls_embedding = hidden_states[:, 0, :]
         return cls_embedding
+
+class SentenceTransformerModel(EncoderModel):
+    def __init__(self, model_name, gpu_index) -> None:
+        super().__init__()
+        self.model = SentenceTransformer(model_name) # , device='cuda:'+str(gpu_index)
+
+    def get_embedding(self, input):
+        with torch.no_grad():
+            outputs = self.model.encode(input, convert_to_tensor=True)
+        return outputs
+
+def sum_norm_embeddings(embeddings: list, gpu_index):
+    # 求和成为一个embedding，形状跟单个cls_embedding一样
+    embeddings = torch.stack(embeddings).cuda(int(gpu_index))
+    summed_embedding = torch.sum(embeddings, dim=0)
+    summed_embedding = summed_embedding.squeeze(0) # 降一维
+    # 归一化
+    normalized_embedding = F.normalize(summed_embedding, p=2, dim=0) # L2范数，对第0维
+    normalized_embedding = normalized_embedding.tolist()
+    return normalized_embedding
 
 def embed_4_modal_meta(file_path, target_file_path):
     count = 1
@@ -44,7 +73,7 @@ def embed_4_modal_meta(file_path, target_file_path):
             des = kv[1]
         
             # embed
-            cls_embedding = custom_pipeline.get_embedding(des)
+            cls_embedding = encoderModel.get_embedding(des)
             cls_embedding = cls_embedding.tolist()
 
             # 写入文件
@@ -85,14 +114,10 @@ def embed_4_modal_image(file_path, target_file_path, gpu_index):
 
             embeddings = []
             for des in des_list: # 这里没有做空处理，因为image_des中没有空集合
-                cls_embedding = custom_pipeline.get_embedding(des)
+                cls_embedding = encoderModel.get_embedding(des)
                 embeddings.append(cls_embedding)
-            # 求和成为一个embedding，形状跟单个cls_embedding一样
-            embeddings = torch.stack(embeddings).cuda(int(gpu_index))
-            summed_embedding = torch.sum(embeddings, dim=0)
-            # 归一化
-            normalized_embedding = F.normalize(summed_embedding, p=2, dim=1) # L2范数
-            normalized_embedding = normalized_embedding.tolist()
+            # 求和，归一化
+            normalized_embedding = sum_norm_embeddings(embeddings, gpu_index)
             
             # 写入文件
             target_file.write(json.dumps({poi_id: normalized_embedding}) + '\n')
@@ -134,19 +159,15 @@ def embed_4_modal_review_summary(file_path, target_file_path, gpu_index):
             # 判断list是否为空
             if review_summary_list == []:
                 # list为空，处理与pois_des一致，对空字符串做嵌入
-                cls_embedding = custom_pipeline.get_embedding("")
+                cls_embedding = encoderModel.get_embedding("")
                 review_summary_embedding = cls_embedding.tolist()
             else:
                 embeddings = []
                 for review in review_summary_list:
-                    cls_embedding = custom_pipeline.get_embedding(review)
+                    cls_embedding = encoderModel.get_embedding(review)
                     embeddings.append(cls_embedding)
-                # 求和成为一个embedding，形状跟单个cls_embedding一样
-                embeddings = torch.stack(embeddings).cuda(int(gpu_index))
-                summed_embedding = torch.sum(embeddings, dim=0)
-                # 归一化
-                normalized_embedding = F.normalize(summed_embedding, p=2, dim=1) # L2范数
-                review_summary_embedding = normalized_embedding.tolist()
+                # 求和，归一化
+                review_summary_embedding = sum_norm_embeddings(embeddings, gpu_index)
             
             # 写入文件
             target_file.write(json.dumps({poi_id: review_summary_embedding}) + '\n')
@@ -188,19 +209,15 @@ def embed_4_modal_review(file_path, target_file_path, gpu_index):
             # 判断list是否为空
             if review_list == []:
                 # list为空，处理与pois_des一致，对空字符串做嵌入
-                cls_embedding = custom_pipeline.get_embedding("")
+                cls_embedding = encoderModel.get_embedding("")
                 review_embedding = cls_embedding.tolist()
             else:
                 embeddings = []
                 for review in review_list:
-                    cls_embedding = custom_pipeline.get_embedding(review)
+                    cls_embedding = encoderModel.get_embedding(review)
                     embeddings.append(cls_embedding)
-                # 求和成为一个embedding，形状跟单个cls_embedding一样
-                embeddings = torch.stack(embeddings).cuda(int(gpu_index))
-                summed_embedding = torch.sum(embeddings, dim=0)
-                # 归一化
-                normalized_embedding = F.normalize(summed_embedding, p=2, dim=1) # L2范数
-                review_embedding = normalized_embedding.tolist()
+                # 求和，归一化
+                review_embedding = sum_norm_embeddings(embeddings, gpu_index)
             
             # 写入文件
             target_file.write(json.dumps({poi_id: review_embedding}) + '\n')
@@ -220,14 +237,16 @@ if __name__ == '__main__':
     # paremeters
     parser = argparse.ArgumentParser()
     parser.add_argument('--region', type=str, default='Hawaii', help='the region name of datasets(e.g. California)')
-    parser.add_argument('--gpu_index', type=str, default='3', help='the index of cuda')
+    parser.add_argument('--gpu_index', type=str, default='0', help='the index of cuda')
     args, _ = parser.parse_known_args()
 
     parent_path = './dataset/' + args.region + '/'
 
-    model_name = "declare-lab/flan-alpaca-xl"
-    custom_pipeline = CustomPipeline(model_name, args.gpu_index)
-    
+    # model_name = "declare-lab/flan-alpaca-xl"
+    # encoderModel = CustomPipeline(model_name, args.gpu_index)
+    model_name = "sentence-transformers/all-mpnet-base-v2"
+    encoderModel = SentenceTransformerModel(model_name, args.gpu_index)
+
     # 处理pois_description.json，对其做嵌入
     pois_description_file_path = parent_path + 'pois_description.json'
     modal_meta_embedding_file_path = parent_path + 'modal_meta_embedding.json'
