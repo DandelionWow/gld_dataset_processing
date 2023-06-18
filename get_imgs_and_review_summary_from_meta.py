@@ -29,12 +29,8 @@ class Chrome:
         self.driver = webdriver.Chrome(path, options=options) # Replace with the path to your ChromeDriver executable
 
     def get(self, url):
-        try:
-            # 发请求
-            self.driver.get(url) 
-        except WebDriverException:
-            logger.error(f'下载失败, 由于代理断了, url为:{url}')
-            return None
+        # 发请求，不主动抓异常，出现异常停止程序
+        self.driver.get(url) 
 
     def get_image_urls(self): # 这块有点问题
         # 爬取'Photos & videos' or 'Photos'栏中的第一个'All'中的所有图片url
@@ -98,6 +94,42 @@ def init_logger(log_file_path, log_file_name):
     )
     return logging.getLogger()
 
+def download_images(row_i, gmap_id, image_urls, downloaded_data_path, skip_img_set, skip_img_file):
+    # 跳过已下载
+    if str(row_i + 1) + '_' + gmap_id + '_' + str(1) in skip_img_set: 
+        return
+    
+    for i, url in enumerate(image_urls):
+        # 每张图片的唯一标识
+        img_id = str(row_i + 1) + '_' + gmap_id + '_' + str(i + 1)
+        
+        try:
+            # 下载单张
+            image = http_get(url)
+        except requests.exceptions.MissingSchema: # 捕获url中没有'https:'或'http:'异常
+            # 添加schema
+            url = 'https:' + url
+            # 重新下载
+            image = http_get(url)
+        # 睡一会
+        time.sleep(random.randint(1, 4))
+        # 判空
+        if image is None:
+            continue
+
+        # 保存图片
+        img_file_path = downloaded_data_path + 'gmap_' + img_id + '.png'
+        with open(img_file_path, 'wb') as f:
+            f.write(image.content)
+            f.flush()
+            f.close()
+
+            # 记录下载成功的图片路径
+            logger.info(f'下载成功, 图片路径为:{img_file_path}')
+            # 记录已下载的gmap_id
+            skip_img_file.write(img_id + '\n')
+            skip_img_file.flush()
+
 if __name__ == '__main__':
     # paremeters
     parser = argparse.ArgumentParser()
@@ -149,8 +181,8 @@ if __name__ == '__main__':
         gmap_id = obj['gmap_id'].replace(":", "-")
         url = obj['url']
 
-        # 跳过已下载，若有一个POI下载了部分图片也跳过把，要不中断后再下载就太慢了，每次都要请求，用正则也慢
-        if str(row_i + 1) + '_' + gmap_id + '_' + str(1) in skip_img_set: 
+        # 跳过img和review_summary都已下载的，因为chrome.get(url)执行速度太慢
+        if (str(row_i + 1) + '_' + gmap_id) in skip_review_summary_set and (str(row_i + 1) + '_' + gmap_id + '_' + str(1)) in skip_img_set:
             continue
 
         # 打开网页
@@ -159,35 +191,7 @@ if __name__ == '__main__':
         # 获取image_urls
         image_urls = chrome.get_image_urls()
         # 下载图片集
-        for i, url in enumerate(image_urls):
-            # 每张图片的唯一标识
-            img_id = str(row_i + 1) + '_' + gmap_id + '_' + str(i + 1)
-            
-            try:
-                # 下载单张
-                image = http_get(url)
-            except requests.exceptions.MissingSchema: # 捕获url中没有'https:'或'http:'异常
-                # 添加schema
-                url = 'https:' + url
-                # 重新下载
-                image = http_get(url)
-            # 睡一会
-            time.sleep(random.randint(1, 4))
-            # 判空
-            if image is None:
-                continue
-
-            # 保存图片
-            img_file_path = downloaded_data_path + 'gmap_' + img_id + '.png'
-            with open(img_file_path, 'wb') as f:
-                f.write(image.content)
-                f.flush()
-
-                # 记录下载成功的图片路径
-                logger.info(f'下载成功, 图片路径为:{img_file_path}')
-                # 记录已下载的gmap_id
-                skip_img_file.write(img_id + '\n')
-                skip_img_file.flush()
+        download_images(row_i, gmap_id, image_urls, downloaded_data_path, skip_img_set, skip_img_file)
 
         # review_summary标识
         review_summary_id = str(row_i + 1) + '_' + gmap_id
@@ -209,3 +213,6 @@ if __name__ == '__main__':
             skip_review_summary_file.flush()
     
     chrome.driver.quit()
+
+    skip_img_file.close()
+    skip_review_summary_file.close()
