@@ -70,13 +70,13 @@ def http_get(url):
     except requests.exceptions.ProxyError: 
         logger.error(f'下载失败, 由于代理断了（或SSLError）, 图片url为:{url}')
         # 多睡会
-        time.sleep(random.randint(5, 8))
+        time.sleep(random.randint(2, 4))
         # 方法直接结束，下载下一张，因为没有记录到skip_file中，最后统一执行即可补全
         return None
     except requests.exceptions.SSLError:
         logger.error(f'下载失败, 由于代理断了（或SSLError）, 图片url为:{url}')
         # 多睡会
-        time.sleep(random.randint(5, 8))
+        time.sleep(random.randint(2, 4))
         # 方法直接结束，下载下一张，因为没有记录到skip_file中，最后统一执行即可补全
         return None
 
@@ -95,14 +95,16 @@ def init_logger(log_file_path, log_file_name):
     return logging.getLogger()
 
 def download_images(row_i, gmap_id, image_urls, downloaded_data_path, skip_img_set, skip_img_file):
-    # 跳过已下载
-    if str(row_i + 1) + '_' + gmap_id + '_' + str(1) in skip_img_set: 
-        return
+    
     
     for i, url in enumerate(image_urls):
         # 每张图片的唯一标识
         img_id = str(row_i + 1) + '_' + gmap_id + '_' + str(i + 1)
         
+        # 跳过已下载
+        if img_id in skip_img_set: 
+            return
+
         try:
             # 下载单张
             image = http_get(url)
@@ -112,7 +114,7 @@ def download_images(row_i, gmap_id, image_urls, downloaded_data_path, skip_img_s
             # 重新下载
             image = http_get(url)
         # 睡一会
-        time.sleep(random.randint(1, 4))
+        time.sleep(random.randint(1, 2))
         # 判空
         if image is None:
             continue
