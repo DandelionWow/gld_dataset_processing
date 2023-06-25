@@ -4,6 +4,7 @@ import os
 import argparse
 import json
 import time
+import logging
 
 def image_to_text(skip_img_file, photo_dir_, write_filename_, cuda_no='cuda:0'):
     from PIL import Image
@@ -18,7 +19,14 @@ def image_to_text(skip_img_file, photo_dir_, write_filename_, cuda_no='cuda:0'):
 
     # 将图像转换为文本，封装为一个函数
     def image2text(image_filename):
-        image = Image.open(image_filename).convert('RGB')
+        try:
+            image = Image.open(image_filename).convert('RGB')
+        except Image.UnidentifiedImageError:
+            logger.error(f'转换失败, UnidentifiedImageError, 图片名称为:{image_filename}')
+            return None
+        except OSError as e:
+            logger.error(f'转换失败, {repr(e)}, 图片名称为:{image_filename}')
+            return None
         inputs = processor(image, text=prompt, return_tensors="pt").to(device, torch.float16)
         generated_ids = model.generate(**inputs, max_new_tokens=20)
         generated_text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
@@ -67,7 +75,8 @@ def image_to_text(skip_img_file, photo_dir_, write_filename_, cuda_no='cuda:0'):
         for image_filename in image_filename_list:
             # 转换
             image_text = image2text(photo_dir_ + image_filename)
-            image_text_list.append(image_text)
+            if image_text is not None: # 异常的先不加入，最后处理
+                image_text_list.append(image_text)
         
         # 更新转换结果，格式与review_summary.json一致，key为row_i+gmap_id，value为des
         with open(write_filename_, 'a+') as f:
@@ -92,12 +101,28 @@ def image_to_text(skip_img_file, photo_dir_, write_filename_, cuda_no='cuda:0'):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--region', type=str, default='Hawaii', help='the region name of datasets(e.g. California)')
-    parser.add_argument('--cuda', type=str, default='0', help='the index of the cuda')
+    parser.add_argument('--region', type=str, default='Alaska', help='the region name of datasets(e.g. California)')
+    parser.add_argument('--dataset_path', type=str, default='/data/SunYang/datasets/GLD', help='the index of the cuda')
+    parser.add_argument('--cuda', type=str, default='1', help='the index of the cuda')
     args, _ = parser.parse_known_args()
 
+    parent_path = os.path.join(args.dataset_path, args.region)
+
+    # 初始化日志
+    logfilename = 'transform_img_to_text.log'
+    logfilepath = os.path.join(parent_path, logfilename)
+    sh = logging.StreamHandler()
+    sh.setLevel(logging.INFO)
+    fh = logging.FileHandler(logfilepath, 'a', 'utf-8')
+    fh.setLevel(logging.INFO)
+    logging.basicConfig(
+        level=logging.INFO,
+        handlers = [sh, fh]
+    )
+    logger = logging.getLogger()
+
     # 图片转文字表述
-    image_to_text('./dataset/'+args.region+'/skip_img_file', # 用于断点续传的跳过文件，每个地区一个
-     './dataset/'+args.region+'/meta_imgs/', # 已下载的meta-xxx.json的（每个POI的）图片集
-     './dataset/'+args.region+'/image_description.json', # 输出文件
+    image_to_text(parent_path + '/skip_img_file', # 用于断点续传的跳过文件，每个地区一个
+     parent_path + '/meta_imgs/', # 已下载的meta-xxx.json的（每个POI的）图片集
+     parent_path + '/image_description.json', # 输出文件
      'cuda:' + args.cuda) # 使用的GPU

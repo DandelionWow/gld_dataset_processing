@@ -198,21 +198,22 @@ class MISC_Template:
 if __name__ == "__main__" :
     # paremeters
     parser = argparse.ArgumentParser()
-    parser.add_argument('--region', type=str, default='Hawaii', help='the region name of datasets(e.g. California)')
+    parser.add_argument('--dataset_path', type=str, default='/data/SunYang/datasets/GLD', help='the path of the dataset')
+    parser.add_argument('--region', type=str, default='Alaska', help='the region name of datasets(e.g. California)')
     args, _ = parser.parse_known_args()
 
     # path设置
-    parent_path = './dataset/' + args.region + '/'
+    parent_path = os.path.join(args.dataset_path, args.region)
     if not os.path.exists(parent_path):
         os.mkdir(parent_path)
-    dataset_path = parent_path + 'meta-' + args.region + '.json'
-    pois_description_file_path = parent_path + 'pois_description.json'
+    meta_file_path = os.path.join(parent_path, 'meta-' + args.region + '.json')
+    pois_description_file_path = os.path.join(parent_path, 'pois_description.json')
 
     # 初始化类
     template = MISC_Template()
 
     # 打开meta-xxx.json文件
-    meta_file = open(dataset_path, 'r')
+    meta_file = open(meta_file_path, 'r')
     # 打开poi_description_file文件
     pois_description_file = open(pois_description_file_path, 'w')
     

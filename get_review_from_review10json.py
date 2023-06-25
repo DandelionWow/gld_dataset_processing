@@ -7,26 +7,27 @@ import emoji
 if __name__ == "__main__":
     # paremeters
     parser = argparse.ArgumentParser()
+    parser.add_argument('--dataset_path', type=str, default='/data/SunYang/datasets/GLD', help='the index of the cuda')
     parser.add_argument(
         "--region",
         type=str,
-        default="Hawaii",
+        default="Alaska",
         help="the region name of datasets(e.g. California)",
     )
     args, _ = parser.parse_known_args()
 
     # path设置
-    parent_path = "./dataset/" + args.region + "/"
+    parent_path = os.path.join(args.dataset_path, args.region)
     if not os.path.exists(parent_path):
         os.mkdir(parent_path)
-    dataset_path = parent_path + "review-" + args.region + "_10.json"
-    pois_reviews_file_path = parent_path + "pois_reviews.json"
+    reivew10_file_path = os.path.join(parent_path, "review-" + args.region + "_10.json")
+    pois_reviews_file_path = os.path.join(parent_path, "pois_reviews.json")
 
     # 字典，key为gmap_id（':'替换为'-'），value为text列表（review评论集合）
     review_dict = dict()
 
     # 打开review-xxx_10.json文件
-    reivew10_file = open(dataset_path, "r")
+    reivew10_file = open(reivew10_file_path, "r")
     # 遍历meta-xxx.json，row_i为行号，line为一行数据
     for row_i, line in enumerate(reivew10_file):
         # 解析json对象，得到字典

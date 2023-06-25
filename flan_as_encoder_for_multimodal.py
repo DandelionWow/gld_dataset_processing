@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import os
 from transformers import pipeline
 import torch
 import torch.nn.functional as F
@@ -35,11 +36,13 @@ class CustomPipeline(EncoderModel):
 class SentenceTransformerModel(EncoderModel):
     def __init__(self, model_name, gpu_index) -> None:
         super().__init__()
-        self.model = SentenceTransformer(model_name) # , device='cuda:'+str(gpu_index)
+        self.model = SentenceTransformer(model_name)
+        self.device = torch.device('cuda:'+gpu_index)
+        self.model.to(self.device)
 
     def get_embedding(self, input):
         with torch.no_grad():
-            outputs = self.model.encode(input, convert_to_tensor=True)
+            outputs = self.model.encode(input, convert_to_tensor=True, device=self.device)
         return outputs
 
 def sum_norm_embeddings(embeddings: list, gpu_index):
@@ -73,7 +76,11 @@ def embed_4_modal_meta(file_path, target_file_path):
             des = kv[1]
         
             # embed
-            cls_embedding = encoderModel.get_embedding(des)
+            if des is None or des == '':
+                # des为空，生成0向量
+                cls_embedding = torch.zeros(786, dtype=torch.float32, device=encoderModel.device)
+            else:
+                cls_embedding = encoderModel.get_embedding(des)
             cls_embedding = cls_embedding.tolist()
 
             # 写入文件
@@ -84,7 +91,8 @@ def embed_4_modal_meta(file_path, target_file_path):
             time_left = (time_end - time_start) / (count + 1) * (total_num - count)
             # 将time_left按照时分秒格式输出
             time_left = time.strftime("%H:%M:%S", time.gmtime(time_left))
-            print('count:', count, 'poi_id:', poi_id, 'time_left:', time_left)
+            if count % 100 == 0:
+                print('count:', count, 'poi_id:', poi_id, 'time_left:', time_left)
             count += 1
 
     target_file.flush()
@@ -127,7 +135,8 @@ def embed_4_modal_image(file_path, target_file_path, gpu_index):
             time_left = (time_end - time_start) / (count + 1) * (total_num - count)
             # 将time_left按照时分秒格式输出
             time_left = time.strftime("%H:%M:%S", time.gmtime(time_left))
-            print('count:', count, 'poi_id:', poi_id, 'time_left:', time_left)
+            if count % 100 == 0:
+                print('count:', count, 'poi_id:', poi_id, 'time_left:', time_left)
             count += 1
             
     target_file.flush()
@@ -158,8 +167,8 @@ def embed_4_modal_review_summary(file_path, target_file_path, gpu_index):
             review_summary_embedding = None
             # 判断list是否为空
             if review_summary_list == []:
-                # list为空，处理与pois_des一致，对空字符串做嵌入
-                cls_embedding = encoderModel.get_embedding("")
+                # list为空，处理与pois_des一致，生成0向量
+                cls_embedding = torch.zeros(786, dtype=torch.float32, device=encoderModel.device)
                 review_summary_embedding = cls_embedding.tolist()
             else:
                 embeddings = []
@@ -177,7 +186,8 @@ def embed_4_modal_review_summary(file_path, target_file_path, gpu_index):
             time_left = (time_end - time_start) / (count + 1) * (total_num - count)
             # 将time_left按照时分秒格式输出
             time_left = time.strftime("%H:%M:%S", time.gmtime(time_left))
-            print('count:', count, 'poi_id:', poi_id, 'time_left:', time_left)
+            if count % 100 == 0:
+                print('count:', count, 'poi_id:', poi_id, 'time_left:', time_left)
             count += 1
             
     target_file.flush()
@@ -208,8 +218,8 @@ def embed_4_modal_review(file_path, target_file_path, gpu_index):
             review_embedding = None
             # 判断list是否为空
             if review_list == []:
-                # list为空，处理与pois_des一致，对空字符串做嵌入
-                cls_embedding = encoderModel.get_embedding("")
+                # list为空，生成0向量
+                cls_embedding = torch.zeros(786, dtype=torch.float32, device=encoderModel.device)
                 review_embedding = cls_embedding.tolist()
             else:
                 embeddings = []
@@ -227,7 +237,8 @@ def embed_4_modal_review(file_path, target_file_path, gpu_index):
             time_left = (time_end - time_start) / (count + 1) * (total_num - count)
             # 将time_left按照时分秒格式输出
             time_left = time.strftime("%H:%M:%S", time.gmtime(time_left))
-            print('count:', count, 'poi_id:', poi_id, 'time_left:', time_left)
+            if count % 100 == 0:
+                print('count:', count, 'poi_id:', poi_id, 'time_left:', time_left)
             count += 1
             
     target_file.flush()
@@ -236,11 +247,12 @@ def embed_4_modal_review(file_path, target_file_path, gpu_index):
 if __name__ == '__main__':
     # paremeters
     parser = argparse.ArgumentParser()
-    parser.add_argument('--region', type=str, default='Hawaii', help='the region name of datasets(e.g. California)')
-    parser.add_argument('--gpu_index', type=str, default='0', help='the index of cuda')
+    parser.add_argument('--dataset_path', type=str, default='/data/SunYang/datasets/GLD', help='the index of the cuda')
+    parser.add_argument('--region', type=str, default='Alaska', help='the region name of datasets(e.g. California)')
+    parser.add_argument('--gpu_index', type=str, default='1', help='the index of cuda')
     args, _ = parser.parse_known_args()
 
-    parent_path = './dataset/' + args.region + '/'
+    parent_path = os.path.join(args.dataset_path, args.region)
 
     # model_name = "declare-lab/flan-alpaca-xl"
     # encoderModel = CustomPipeline(model_name, args.gpu_index)
@@ -248,21 +260,21 @@ if __name__ == '__main__':
     encoderModel = SentenceTransformerModel(model_name, args.gpu_index)
 
     # 处理pois_description.json，对其做嵌入
-    pois_description_file_path = parent_path + 'pois_description.json'
-    modal_meta_embedding_file_path = parent_path + 'modal_meta_embedding.json'
+    pois_description_file_path = os.path.join(parent_path, 'pois_description.json')
+    modal_meta_embedding_file_path = os.path.join(parent_path, 'modal_meta_embedding.json')
     embed_4_modal_meta(pois_description_file_path, modal_meta_embedding_file_path)
 
     # 处理image_description.json，对其做嵌入
-    image_description_file_path = parent_path + 'image_description.json'
-    modal_image_embedding_file_path = parent_path + 'modal_image_embedding.json'
+    image_description_file_path = os.path.join(parent_path, 'image_description.json')
+    modal_image_embedding_file_path = os.path.join(parent_path, 'modal_image_embedding.json')
     embed_4_modal_image(image_description_file_path, modal_image_embedding_file_path, args.gpu_index)
 
     # 处理review_summary.json，对其做嵌入
-    review_summary_file_path = parent_path + 'review_summary.json'
-    modal_review_summary_embedding_file_path = parent_path + 'modal_review_summary_embedding.json'
+    review_summary_file_path = os.path.join(parent_path, 'review_summary.json')
+    modal_review_summary_embedding_file_path = os.path.join(parent_path, 'modal_review_summary_embedding.json')
     embed_4_modal_review_summary(review_summary_file_path, modal_review_summary_embedding_file_path, args.gpu_index)
 
     # 处理pois_reviews.json，对其做嵌入
-    pois_reviews_file_path = parent_path + 'pois_reviews.json'
-    modal_review_embedding_file_path = parent_path + 'modal_review_embedding.json'
+    pois_reviews_file_path = os.path.join(parent_path, 'pois_reviews.json')
+    modal_review_embedding_file_path = os.path.join(parent_path, 'modal_review_embedding.json')
     embed_4_modal_review(pois_reviews_file_path, modal_review_embedding_file_path, args.gpu_index)
