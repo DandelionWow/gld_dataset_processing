@@ -20,7 +20,11 @@
 
 对于**图片集**，文件保存为：[gmap_1_0x7c00456eecad3111-0x8217f9600c51f33_2.png](./dataset/Hawaii/downloaded_multimodal_data/gmap_1_0x7c00456eecad3111-0x8217f9600c51f33_2.png)。其中，文件名使用字符串`_`分割，从前到后依次是：`gmap`表示一个固定字符串；`1`表示`meta-xxx.json`的第几行；`0x7c00456eecad3111-0x8217f9600c51f33`表示gmap_id，即POI的ID，但为了适配windows的文件系统，将gmap_id中的字符`:`替换为了字符`-`；`2`表示该POI对应图片集的第几张图片。
 
+图片默认下载到`./dataset/xxx/downloaded_multimodal_data/xxxxx.png`。一般来说图片集进行处理之前需要更换图片路径，可以执行`mv ./dataset/xxx/downloaded_multimodal_data/*.png 'target_path'`。
+
 对于**评论总结**，文件保存为：[review_summary.json](./dataset/Hawaii/downloaded_multimodal_data/review_summary.json)。文件的每一行是一个json对象，每个对象只有一对`key`和`value`。其中，`key`为POI的唯一标识，如`1_0x7c00456eecad3111-0x8217f9600c51f33`，同理，以字符`_`分割，`1`表示`meta-xxx.json`的第几行，`0x7c00456eecad3111-0x8217f9600c51f33`为gmap_id（替换后）；`value`为一个列表，保存评论总结信息，如`["Office clean and friendly staff.", ...]`。
+
+评论总结默认下载到`./dataset/xxx/downloaded_multimodal_data/review_summary.json`。一般来说对评论总结进行处理之前需要更换路径，可执行`mv ./dataset/xxx/downloaded_multimodal_data/review_summary.json 'target_path'`。
 
 ### 第二步，提取汇总POIs的描述和评论
 #### 获得POIs描述
