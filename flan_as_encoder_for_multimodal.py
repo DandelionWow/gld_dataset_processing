@@ -65,6 +65,8 @@ def embed_4_modal_meta(file_path, target_file_path):
             total_num += 1
 
     target_file = open(target_file_path, 'w')
+    # 临时记录poi_id
+    temp_poi_id_set = set()
 
     # 逐条读取filename
     with open(file_path, 'r') as f:
@@ -72,19 +74,22 @@ def embed_4_modal_meta(file_path, target_file_path):
             # 解析json
             line = json.loads(line)
             kv = line.popitem()
-            poi_id = kv[0]
+            poi_id = kv[0].split('_')[1].replace('-', ':')
             des = kv[1]
         
             # embed
             if des is None or des == '':
-                # des为空，生成0向量
-                cls_embedding = torch.zeros(786, dtype=torch.float32, device=encoderModel.device)
+                # 跳过，最后填充0向量
+                continue
             else:
                 cls_embedding = encoderModel.get_embedding(des)
             cls_embedding = cls_embedding.tolist()
 
             # 写入文件
             target_file.write(json.dumps({poi_id: cls_embedding}) + '\n')
+
+            # 记录poi_id
+            temp_poi_id_set.add(poi_id)
         
             # 计算剩余时间
             time_end = time.time()
@@ -94,6 +99,12 @@ def embed_4_modal_meta(file_path, target_file_path):
             if count % 100 == 0:
                 print('count:', count, 'poi_id:', poi_id, 'time_left:', time_left)
             count += 1
+
+    # 填充0向量
+    cls_embedding = torch.zeros(786, dtype=torch.float32, device=encoderModel.device).tolist()
+    for poi_id in poi_id_set:
+        if poi_id not in temp_poi_id_set:
+            target_file.write(json.dumps({poi_id: cls_embedding}) + '\n')
 
     target_file.flush()
     target_file.close()
@@ -110,6 +121,8 @@ def embed_4_modal_image(file_path, target_file_path, gpu_index):
 
     # 打开目标写入文件
     target_file = open(target_file_path, 'w')
+    # 临时记录poi_id
+    temp_poi_id_set = set()
 
     # 逐条读取filename
     with open(file_path, 'r') as f:
@@ -117,7 +130,7 @@ def embed_4_modal_image(file_path, target_file_path, gpu_index):
             # 解析json
             line = json.loads(line)
             kv = line.popitem()
-            poi_id = kv[0]
+            poi_id = kv[0].split('_')[1].replace('-', ':')
             des_list = kv[1]
 
             embeddings = []
@@ -129,6 +142,9 @@ def embed_4_modal_image(file_path, target_file_path, gpu_index):
             
             # 写入文件
             target_file.write(json.dumps({poi_id: normalized_embedding}) + '\n')
+
+            # 记录poi_id
+            temp_poi_id_set.add(poi_id)
             
             # 计算剩余时间
             time_end = time.time()
@@ -139,6 +155,12 @@ def embed_4_modal_image(file_path, target_file_path, gpu_index):
                 print('count:', count, 'poi_id:', poi_id, 'time_left:', time_left)
             count += 1
             
+    # 填充0向量
+    cls_embedding = torch.zeros(786, dtype=torch.float32, device=encoderModel.device).tolist()
+    for poi_id in poi_id_set:
+        if poi_id not in temp_poi_id_set:
+            target_file.write(json.dumps({poi_id: cls_embedding}) + '\n')
+
     target_file.flush()
     target_file.close()
 
@@ -154,6 +176,8 @@ def embed_4_modal_review_summary(file_path, target_file_path, gpu_index):
 
     # 打开目标写入文件
     target_file = open(target_file_path, 'w')
+    # 临时记录poi_id
+    temp_poi_id_set = set()
 
     # 逐条读取filename
     with open(file_path, 'r') as f:
@@ -161,15 +185,14 @@ def embed_4_modal_review_summary(file_path, target_file_path, gpu_index):
             # 解析json
             line = json.loads(line)
             kv = line.popitem() # [key, value]
-            poi_id = kv[0] # key
+            poi_id = kv[0].split('_')[1].replace('-', ':') # key
             review_summary_list = kv[1] # value
             
             review_summary_embedding = None
             # 判断list是否为空
             if review_summary_list == []:
-                # list为空，处理与pois_des一致，生成0向量
-                cls_embedding = torch.zeros(786, dtype=torch.float32, device=encoderModel.device)
-                review_summary_embedding = cls_embedding.tolist()
+                # list为空，跳过，最后填充0向量
+                continue
             else:
                 embeddings = []
                 for review in review_summary_list:
@@ -181,6 +204,9 @@ def embed_4_modal_review_summary(file_path, target_file_path, gpu_index):
             # 写入文件
             target_file.write(json.dumps({poi_id: review_summary_embedding}) + '\n')
             
+            # 记录poi_id
+            temp_poi_id_set.add(poi_id)
+            
             # 计算剩余时间
             time_end = time.time()
             time_left = (time_end - time_start) / (count + 1) * (total_num - count)
@@ -190,6 +216,12 @@ def embed_4_modal_review_summary(file_path, target_file_path, gpu_index):
                 print('count:', count, 'poi_id:', poi_id, 'time_left:', time_left)
             count += 1
             
+    # 填充0向量
+    cls_embedding = torch.zeros(786, dtype=torch.float32, device=encoderModel.device).tolist()
+    for poi_id in poi_id_set:
+        if poi_id not in temp_poi_id_set:
+            target_file.write(json.dumps({poi_id: cls_embedding}) + '\n')
+
     target_file.flush()
     target_file.close()
 
@@ -205,6 +237,8 @@ def embed_4_modal_review(file_path, target_file_path, gpu_index):
 
     # 打开目标写入文件
     target_file = open(target_file_path, 'w')
+    # 临时记录poi_id
+    temp_poi_id_set = set()
 
     # 逐条读取filename
     with open(file_path, 'r') as f:
@@ -212,15 +246,14 @@ def embed_4_modal_review(file_path, target_file_path, gpu_index):
             # 解析json
             line = json.loads(line)
             kv = line.popitem() # [key, value]
-            poi_id = kv[0] # key
+            poi_id = kv[0].replace('-', ':') # key
             review_list = kv[1] # value
             
             review_embedding = None
             # 判断list是否为空
             if review_list == []:
-                # list为空，生成0向量
-                cls_embedding = torch.zeros(786, dtype=torch.float32, device=encoderModel.device)
-                review_embedding = cls_embedding.tolist()
+                # list为空，跳过
+                continue
             else:
                 embeddings = []
                 for review in review_list:
@@ -231,6 +264,9 @@ def embed_4_modal_review(file_path, target_file_path, gpu_index):
             
             # 写入文件
             target_file.write(json.dumps({poi_id: review_embedding}) + '\n')
+
+            # 记录poi_id
+            temp_poi_id_set.add(poi_id)
             
             # 计算剩余时间
             time_end = time.time()
@@ -241,14 +277,30 @@ def embed_4_modal_review(file_path, target_file_path, gpu_index):
                 print('count:', count, 'poi_id:', poi_id, 'time_left:', time_left)
             count += 1
             
+    # 填充0向量
+    cls_embedding = torch.zeros(786, dtype=torch.float32, device=encoderModel.device).tolist()
+    for poi_id in poi_id_set:
+        if poi_id not in temp_poi_id_set:
+            target_file.write(json.dumps({poi_id: cls_embedding}) + '\n')
+
     target_file.flush()
     target_file.close()
+
+def get_poi_id_set(file_path) -> set:
+    meta_file = open(file_path, 'r')
+
+    poi_id_set = set()
+    for line in meta_file:
+        obj = json.loads(line)
+        poi_id_set.add(obj['gmap_id'])
+
+    return poi_id_set
 
 if __name__ == '__main__':
     # paremeters
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset_path', type=str, default='/data/SunYang/datasets/GLD', help='the index of the cuda')
-    parser.add_argument('--region', type=str, default='Alaska', help='the region name of datasets(e.g. California)')
+    parser.add_argument('--dataset_path', type=str, default='/data/SunYang/datasets/GLD', help='the path of the dataset')
+    parser.add_argument('--region', type=str, default='Hawaii', help='the region name of datasets(e.g. California)')
     parser.add_argument('--gpu_index', type=str, default='1', help='the index of cuda')
     args, _ = parser.parse_known_args()
 
@@ -258,6 +310,10 @@ if __name__ == '__main__':
     # encoderModel = CustomPipeline(model_name, args.gpu_index)
     model_name = "sentence-transformers/all-mpnet-base-v2"
     encoderModel = SentenceTransformerModel(model_name, args.gpu_index)
+
+    # 加载poi_id的set集合，用于填充0向量
+    meta_file_path = os.path.join(parent_path, 'meta-'+args.region+'.json')
+    poi_id_set = get_poi_id_set(meta_file_path)
 
     # 处理pois_description.json，对其做嵌入
     pois_description_file_path = os.path.join(parent_path, 'pois_description.json')

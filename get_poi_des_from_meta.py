@@ -252,6 +252,10 @@ if __name__ == "__main__" :
             poi_des += template.recycling(misc_info.get(template.str_recycling))
             poi_des += template.getting_here(misc_info.get(template.str_getting_here))
 
+        # 跳过空串，最后填充0向量
+        if poi_des == '':
+            continue
+
         # 保存转换结果
         obj = {str(row_i+1)+'_'+gmap_id: poi_des} # 与image des和review summary保存格式一致
         pois_description_file.write(json.dumps(obj) + '\n')

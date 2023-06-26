@@ -57,10 +57,7 @@ if __name__ == "__main__":
             text = text.replace('\u2019', '\'')
             
         else:
-            # text为空，防止对应gmap_id的text都为空，造成gmap_id的缺失，初始化一个空数组
-            if text_list is None:
-                review_dict[gmap_id] = []
-            # 并且不继续执行，防止给数组中添加一个None
+            # text为空，跳过，最后填充0向量
             continue
         
         # 保存到字典reivew_dict中
