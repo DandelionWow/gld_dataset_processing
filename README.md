@@ -6,7 +6,11 @@
 详情见官网[Google Local Data](https://jiachengli1995.github.io/google/index.html)
 
 ## 目标
+### 对于meta-xxx.json
 对数据集[Google Local Data](https://jiachengli1995.github.io/google/index.html)进行预处理。通过获取POI的图片、评论、MISC等数据，并对这些数据进行处理，最终得到对POIs的总描述。
+
+### 对于review-xxx_10.json
+该文件为用户与POI交互数据，需要对此数据划分用户轨迹，得到训练集和测试集（类似NYC数据集）。代码见[get_train_test_from_review10.py](./get_train_test_from_review10.py)。
 
 ## 处理步骤
 ### 下载数据集
