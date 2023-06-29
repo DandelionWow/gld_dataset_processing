@@ -299,7 +299,7 @@ def get_poi_id_set(file_path) -> set:
 if __name__ == '__main__':
     # paremeters
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset_path', type=str, default='/data/SunYang/datasets/GLD', help='the path of the dataset')
+    parser.add_argument('--dataset_path', type=str, default='./datasets', help='the path of the dataset')
     parser.add_argument('--region', type=str, default='Hawaii', help='the region name of datasets(e.g. California)')
     parser.add_argument('--gpu_index', type=str, default='1', help='the index of cuda')
     args, _ = parser.parse_known_args()

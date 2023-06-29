@@ -7,7 +7,7 @@ import emoji
 if __name__ == "__main__":
     # paremeters
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset_path', type=str, default='/data/SunYang/datasets/GLD', help='the index of the cuda')
+    parser.add_argument('--dataset_path', type=str, default='./datasets', help='the index of the cuda')
     parser.add_argument(
         "--region",
         type=str,

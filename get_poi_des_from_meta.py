@@ -198,7 +198,7 @@ class MISC_Template:
 if __name__ == "__main__" :
     # paremeters
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset_path', type=str, default='/data/SunYang/datasets/GLD', help='the path of the dataset')
+    parser.add_argument('--dataset_path', type=str, default='./datasets', help='the path of the dataset')
     parser.add_argument('--region', type=str, default='Alaska', help='the region name of datasets(e.g. California)')
     args, _ = parser.parse_known_args()
 
