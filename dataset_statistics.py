@@ -5,6 +5,7 @@ from datetime import datetime
 import time
 import pickle
 import os
+import pandas as pd
 
 
 def handle_dataset_review(file_path, review_file_name):
@@ -123,14 +124,46 @@ def statistics_4_meta(file_path, file_name):
     # 打印
     print(len(misc_info_category_set))
 
+def statistics_4_poi_category(file_path):
+    file = open(file_path, 'r')
+    category_set = set()
+    for index, line in enumerate(file):
+        obj = json.loads(line)
+        category = obj['category']
+        if category is not None:
+            category_set.update(category)
+
+    category_list = list(category_set)
+    category_list.sort()
+    return category_set
+
+def statistics_4_nyc(file_path):
+    df = pd.read_csv(file_path)
+    
+    # category_list = df['POI_catname'].to_list()
+    # category_set = set(category_list)
+    # category_list = list(category_set)
+    # category_list.sort()
+
+    user_list = df['user_id'].to_list()
+    count = 0
+    for user_id in user_list:
+        if str(user_id) == '470':
+            count += 1
+    
+    return count
+
 if __name__=='__main__':
-    region = 'California'
+    region = 'Hawaii'
     file_path = './dataset/' + region + '/'
     review_10_file_name = 'review-' + region + '_10.json'
     meta_file_name = 'meta-' + region + '.json'
+    nyc_file_path = 'D:\\sy\\dev\\python\\GETNext\\dataset\\NYC\\NYC_train.csv'
 
     # statistics_4_review_10(file_path, review_10_file_name)
-    statistics_4_meta(file_path, meta_file_name)
+    # statistics_4_meta(file_path, meta_file_name)
+    # statistics_4_poi_category(file_path+meta_file_name)
+    statistics_4_nyc(nyc_file_path)
 
     # misc_info_category_set = set()
     # misc_info_category_set_ = set()
